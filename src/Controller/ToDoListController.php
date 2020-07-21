@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\Request;
+use App\Entity\Task;
 
 class ToDoListController extends AbstractController
 {
@@ -12,15 +14,28 @@ class ToDoListController extends AbstractController
      */
     public function index()
     {
-        return $this->render('index.html.twig');
+        $sortBy = ['id' => 'DESC'];
+        $tasks = $this->getDoctrine()->getRepository(Task::class)->findBy([], $sortBy);
+        return $this->render('index.html.twig', ['tasks' => $tasks]);
     }
     
     /**
      * @Route("/create", name="create_task", methods={"POST"})
      */
-    public function createTask()
+    public function createTask(Request $request)
     {
-        exit("To do: create a task");
+        if (is_null($request->request->get("title")) || empty($request->request->get("title"))) {
+            return $this->redirectToRoute("to_do_list");
+        }
+        
+        $em = $this->getDoctrine()->getManager();
+        $task = new Task();
+        $task->setTitle($request->request->get("title"));
+        $task->setStatus(false);
+        $em->persist($task);
+        $em->flush();
+        
+        return $this->redirectToRoute("to_do_list");
     }
     
     /**
@@ -28,14 +43,23 @@ class ToDoListController extends AbstractController
      */
     public function switchStatus($id)
     {
-        exit("To do: switch the status! id:$id");
+        $task = $this->getDoctrine()->getRepository(Task::class)->find($id);
+        $task->setStatus(!$task->getStatus());
+        $em = $this->getDoctrine()->getManager();
+        $em->flush();
+        
+        return $this->redirectToRoute("to_do_list");
     }
     
     /**
      * @Route("/delete/{id}", name="task_delete")
      */
-    public function deleteTask($id)
+    public function deleteTask(Task $id)
     {
-        exit("To do: delete the task! id:$id");
+        $em = $this->getDoctrine()->getManager();
+        $em->remove($id);
+        $em->flush();
+        
+        return $this->redirectToRoute("to_do_list");
     }
 }
